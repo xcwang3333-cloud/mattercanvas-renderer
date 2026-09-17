@@ -1,5 +1,5 @@
 // MatterCanvas Renderer v0.4
-// Publication SVG structure renderer with active-site highlighting.
+// Publication SVG structure renderer with active-site and coordination highlighting.
 
 import { detectBonds } from '../core/bond-detector.js';
 import { getElement } from '../core/elements.js';
@@ -8,6 +8,8 @@ import { createOrthographicProjector } from './projection.js';
 import { latticeVertices, renderSvgCell } from './svg-cell-renderer.js';
 import { getAtomRenderStyle } from '../renderers/svg-active-site-style.js';
 import { buildActiveSiteState } from '../renderers/active-site-highlight.js';
+import { buildCoordinationAnnotations } from '../renderers/coordination-annotation.js';
+import { renderSvgCoordination } from './svg-coordination-renderer.js';
 
 function hexColor(value) {
   if (typeof value === 'string') return value;
@@ -48,6 +50,15 @@ export function renderStructureSVG(structure, options = {}) {
     ? renderSvgCell(structure.lattice, projector, style)
     : '';
 
+  const coordinationSvg = options.coordination
+    ? renderSvgCoordination(
+        buildCoordinationAnnotations(structure, options.coordination),
+        structure,
+        projector,
+        style
+      )
+    : '';
+
   const bondSvg = bonds.map(bond => {
     const a = projector(structure.atoms[bond.atom1].position);
     const b = projector(structure.atoms[bond.atom2].position);
@@ -77,5 +88,5 @@ export function renderStructureSVG(structure, options = {}) {
     });
   }).join('\n');
 
-  return `<g class="mc-structure">\n${cellSvg}\n${bondSvg}\n${atomSvg}\n</g>`;
+  return `<g class="mc-structure">\n${cellSvg}\n${coordinationSvg}\n${bondSvg}\n${atomSvg}\n</g>`;
 }
