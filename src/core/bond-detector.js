@@ -1,42 +1,30 @@
-// MatterCanvas Renderer v0.1
-// Simple covalent-radius based bond detection
+// MatterCanvas Renderer v0.4
+// Covalent-radius based bond detection using the shared scientific element library.
 
-const COVALENT_RADII = {
-  H: 0.31,
-  C: 0.76,
-  N: 0.71,
-  O: 0.66,
-  S: 1.05,
-  Fe: 1.26,
-  Co: 1.25,
-  Ni: 1.21,
-  Pb: 1.46
-};
+import { getElement } from './elements.js';
 
 function distance(a, b) {
-  return Math.sqrt(
-    (a[0]-b[0])**2 +
-    (a[1]-b[1])**2 +
-    (a[2]-b[2])**2
+  return Math.hypot(
+    a[0] - b[0],
+    a[1] - b[1],
+    a[2] - b[2]
   );
 }
 
-export function detectBonds(atoms, tolerance = 1.25) {
+export function detectBonds(atoms, tolerance = 1.18, options = {}) {
   const bonds = [];
+  const minDistance = options.minDistance ?? 0.35;
+  const maxDistance = options.maxDistance ?? Infinity;
 
-  for (let i = 0; i < atoms.length; i++) {
-    for (let j = i + 1; j < atoms.length; j++) {
-      const ri = COVALENT_RADII[atoms[i].element];
-      const rj = COVALENT_RADII[atoms[j].element];
-      if (!ri || !rj) continue;
-
+  for (let i = 0; i < atoms.length; i += 1) {
+    for (let j = i + 1; j < atoms.length; j += 1) {
+      const ri = getElement(atoms[i].element).radius;
+      const rj = getElement(atoms[j].element).radius;
       const d = distance(atoms[i].position, atoms[j].position);
-      if (d < tolerance * (ri + rj)) {
-        bonds.push({
-          atom1: i,
-          atom2: j,
-          distance: d
-        });
+      const cutoff = tolerance * (ri + rj);
+
+      if (d >= minDistance && d <= Math.min(cutoff, maxDistance)) {
+        bonds.push({ atom1: i, atom2: j, distance: d });
       }
     }
   }

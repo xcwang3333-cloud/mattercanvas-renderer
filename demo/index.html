@@ -1,60 +1,124 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<title>MatterCanvas Renderer Demo</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MatterCanvas Renderer — DFT Figure Demo</title>
 <style>
-body{margin:0;font-family:Arial;background:#f5f5f5}
-#toolbar{padding:10px;background:white;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-#viewer{width:100vw;height:calc(100vh - 70px)}
-#drop{padding:8px;border:1px dashed #999;background:#fafafa}
-select,button{padding:5px}
+:root{font-family:Inter,Arial,sans-serif;color:#172027;background:#eef1f3}
+*{box-sizing:border-box}
+body{margin:0}
+header{padding:16px 20px;background:#fff;border-bottom:1px solid #d9dfe3}
+header h1{font-size:18px;margin:0 0 4px} header p{margin:0;color:#66727b;font-size:13px}
+main{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;padding:16px;min-height:calc(100vh - 76px)}
+.panel{background:#fff;border:1px solid #d9dfe3;border-radius:10px;padding:14px;box-shadow:0 2px 8px rgba(20,35,45,.04)}
+.controls{display:grid;gap:12px;align-content:start}
+.control label{display:block;font-size:12px;font-weight:700;margin-bottom:5px;color:#34424b}
+input[type=file],select,button{width:100%;font:inherit}
+select,button{height:36px;border:1px solid #cbd4d9;border-radius:7px;background:#fff;padding:0 9px}
+button{cursor:pointer;font-weight:700} button.primary{background:#1f586b;color:#fff;border-color:#1f586b} button:disabled{opacity:.45;cursor:not-allowed}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.check{display:flex;gap:8px;align-items:center;font-size:13px}
+#status{font-size:12px;line-height:1.5;color:#65717a;padding:8px;background:#f6f8f9;border-radius:7px;min-height:48px}
+#files{font-size:12px;color:#44525b;max-height:150px;overflow:auto;margin:0;padding-left:18px}
+.preview{display:flex;flex-direction:column;min-width:0}
+#figure-preview{flex:1;display:flex;align-items:center;justify-content:center;overflow:auto;background:#dde3e6;border-radius:8px;padding:18px;min-height:560px}
+#figure-preview svg{max-width:100%;height:auto;background:#fff;box-shadow:0 8px 30px rgba(20,35,45,.12)}
+.hint{font-size:13px;color:#67737b;text-align:center;max-width:520px;line-height:1.6}
+@media(max-width:850px){main{grid-template-columns:1fr}.preview{min-height:520px}}
 </style>
 </head>
 <body>
-<div id="toolbar">
-<input id="file" type="file" accept="POSCAR,.vasp,.cif">
-<button id="load">Load</button>
-<select id="style">
-<option value="nature">Nature</option>
-<option value="jacs">JACS</option>
-<option value="minimal">Minimal</option>
-</select>
-<select id="camera">
-<option value="publication-iso">Publication ISO</option>
-<option value="top">Top</option>
-</select>
-<button id="apply">Apply</button>
-<button id="export">Export PNG</button>
-<div id="drop">Drag POSCAR here</div>
-</div>
-<div id="viewer"></div>
+<header>
+  <h1>MatterCanvas Renderer — v0.4-6 DFT Figure Demo</h1>
+  <p>Import VASP POSCAR / CONTCAR structures and generate reproducible Nature- or JACS-style multi-panel figures.</p>
+</header>
+<main>
+  <aside class="panel controls">
+    <div class="control">
+      <label>Structure files</label>
+      <input id="filesInput" type="file" multiple>
+    </div>
+    <div class="control">
+      <label>Or import a calculation folder</label>
+      <input id="folderInput" type="file" webkitdirectory multiple>
+    </div>
+    <div class="row">
+      <div class="control"><label>Style</label><select id="style"><option value="nature">Nature</option><option value="jacs">JACS</option></select></div>
+      <div class="control"><label>Layout</label><select id="columns"><option value="2">2 columns</option><option value="4">4 columns</option><option value="3">3 columns</option><option value="1">1 column</option></select></div>
+    </div>
+    <label class="check"><input id="showCell" type="checkbox" checked> Show unit cell</label>
+    <button id="generate" class="primary">Generate DFT Figure</button>
+    <div class="row">
+      <button id="exportSvg" disabled>Export SVG</button>
+      <button id="exportPng" disabled>Export PNG</button>
+    </div>
+    <div id="status">Choose POSCAR/CONTCAR files or a calculation folder. When a folder contains both files, CONTCAR is preferred.</div>
+    <ul id="files"></ul>
+  </aside>
+  <section class="panel preview">
+    <div id="figure-preview"><div class="hint">The generated publication figure will appear here.<br>Typical folder names such as <b>PbN4-COOH</b>, <b>OCHO</b>, and <b>CO</b> are converted to panel titles automatically.</div></div>
+  </section>
+</main>
 <script type="module">
-import { parsePOSCAR } from '../src/parser/poscar-parser.js';
-import { StructureViewer } from '../src/viewer/three-viewer.js';
-import { exportPNG } from '../src/export/image-export.js';
-import { applyStyle } from '../src/renderer/style-renderer.js';
+import { loadDftPanels } from '../src/composer/dft-demo-loader.js';
+import { renderDftFigureSvg, downloadSvg } from '../src/composer/dft-figure-composer.js';
+import { downloadSvgAsPng } from '../src/export/svg-raster-export.js';
 
-const viewer = new StructureViewer(document.getElementById('viewer'));
-let currentStructure=null;
+const filesInput = document.getElementById('filesInput');
+const folderInput = document.getElementById('folderInput');
+const fileList = document.getElementById('files');
+const status = document.getElementById('status');
+const preview = document.getElementById('figure-preview');
+const exportSvg = document.getElementById('exportSvg');
+const exportPng = document.getElementById('exportPng');
+let selectedFiles = [];
+let currentSvg = '';
 
-async function loadText(text){
- currentStructure=parsePOSCAR(text);
- viewer.loadStructure(currentStructure);
- viewer.render();
+function setFiles(files) {
+  selectedFiles = Array.from(files || []);
+  fileList.innerHTML = selectedFiles.slice(0, 40).map(file => `<li>${file.webkitRelativePath || file.name}</li>`).join('');
+  if (selectedFiles.length > 40) fileList.insertAdjacentHTML('beforeend', `<li>… ${selectedFiles.length - 40} more files</li>`);
+  status.textContent = `${selectedFiles.length} file(s) selected. Only POSCAR, CONTCAR, and .vasp files will be used.`;
 }
-async function loadFile(file){if(file) await loadText(await file.text());}
 
-document.getElementById('load').onclick=()=>loadFile(document.getElementById('file').files[0]);
-document.getElementById('apply').onclick=()=>{
- applyStyle(viewer,document.getElementById('style').value);
- if(viewer.applyCameraTemplate) viewer.applyCameraTemplate(document.getElementById('camera').value);
-};
-document.getElementById('export').onclick=()=>exportPNG(viewer.renderer,'mattercanvas-publication.png');
+filesInput.addEventListener('change', () => setFiles(filesInput.files));
+folderInput.addEventListener('change', () => setFiles(folderInput.files));
 
-const drop=document.getElementById('drop');
-drop.ondragover=e=>e.preventDefault();
-drop.ondrop=e=>{e.preventDefault();loadFile(e.dataTransfer.files[0]);};
+document.getElementById('generate').addEventListener('click', async () => {
+  try {
+    status.textContent = 'Parsing VASP structures…';
+    const panels = await loadDftPanels(selectedFiles);
+    const style = document.getElementById('style').value;
+    const columns = Number(document.getElementById('columns').value);
+    const showCell = document.getElementById('showCell').checked;
+    currentSvg = renderDftFigureSvg(panels, { style, columns, showCell });
+    preview.innerHTML = currentSvg;
+    exportSvg.disabled = false;
+    exportPng.disabled = false;
+    status.textContent = `Generated ${panels.length} panel(s) in ${style.toUpperCase()} style: ${panels.map(p => `${p.label} ${p.title}`).join(' · ')}`;
+  } catch (error) {
+    currentSvg = '';
+    exportSvg.disabled = true;
+    exportPng.disabled = true;
+    status.textContent = `Error: ${error?.message || error}`;
+  }
+});
+
+exportSvg.addEventListener('click', () => {
+  if (currentSvg) downloadSvg(currentSvg, 'mattercanvas-dft-figure.svg');
+});
+
+exportPng.addEventListener('click', async () => {
+  if (!currentSvg) return;
+  status.textContent = 'Rendering high-resolution PNG…';
+  try {
+    await downloadSvgAsPng(currentSvg, 'mattercanvas-dft-figure.png', { scale: 4 });
+    status.textContent = 'PNG exported at 4× figure resolution.';
+  } catch (error) {
+    status.textContent = `PNG export error: ${error?.message || error}`;
+  }
+});
 </script>
 </body>
 </html>
