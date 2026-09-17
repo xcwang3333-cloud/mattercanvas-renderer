@@ -1,0 +1,12 @@
+{
+  "name": "Minimal",
+  "atomScale": 0.28,
+  "bondRadius": 0.035,
+  "cellOpacity": 0.08,
+  "background": "#ffffff",
+  "orthographic": true,
+  "lighting": {
+    "ambient": 0.55,
+    "directional": 1.2
+  }
+}
