@@ -1,7 +1,10 @@
 // MatterCanvas Renderer - publication style controller
 
-export function applyStyle(viewer, style) {
-  if (!viewer || !style) return;
+import { getStyle } from './styles.js';
+
+export function applyStyle(viewer, styleName = 'nature') {
+  const style = typeof styleName === 'string' ? getStyle(styleName) : styleName;
+  if (!viewer || !style) return style;
 
   if (viewer.renderer && style.background) {
     viewer.renderer.setClearColor(style.background, 1);
@@ -19,4 +22,6 @@ export function applyStyle(viewer, style) {
       }
     });
   }
+
+  return style;
 }
