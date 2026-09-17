@@ -2,6 +2,7 @@
 // Three.js atom / bond / lattice renderer
 
 import * as THREE from 'three';
+import { detectBonds } from '../core/bond-detector.js';
 
 const ELEMENTS = {
   H: { color: 0xffffff, radius: 0.31 },
@@ -29,8 +30,8 @@ export class StructureViewer {
     container.appendChild(this.renderer.domElement);
 
     this.camera.position.set(0, 0, 20);
-
     this.scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
     const light = new THREE.DirectionalLight(0xffffff, 2);
     light.position.set(5, 5, 5);
     this.scene.add(light);
@@ -39,6 +40,7 @@ export class StructureViewer {
   loadStructure(structure) {
     this.structure = structure;
     this.addAtoms(structure);
+    this.addBonds(structure);
     this.addLattice(structure.lattice);
   }
 
@@ -55,16 +57,47 @@ export class StructureViewer {
     this.scene.add(group);
   }
 
+  addBonds(structure) {
+    const group = new THREE.Group();
+    const bonds = detectBonds(structure.atoms);
+
+    bonds.forEach(bond => {
+      const start = new THREE.Vector3(...structure.atoms[bond.atom1].position);
+      const end = new THREE.Vector3(...structure.atoms[bond.atom2].position);
+      const direction = end.clone().sub(start);
+      const length = direction.length();
+      const geometry = new THREE.CylinderGeometry(0.05, 0.05, length, 16);
+      const material = new THREE.MeshStandardMaterial({ color: 0x777777 });
+      const cylinder = new THREE.Mesh(geometry, material);
+
+      cylinder.position.copy(start.clone().add(end).multiplyScalar(0.5));
+      cylinder.quaternion.setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0),
+        direction.normalize()
+      );
+      group.add(cylinder);
+    });
+
+    this.scene.add(group);
+  }
+
   addLattice(lattice) {
     if (!lattice) return;
-    const points = [
-      new THREE.Vector3(0,0,0),
-      new THREE.Vector3(...lattice[0]),
-      new THREE.Vector3(...lattice[1]),
-      new THREE.Vector3(...lattice[2])
+
+    const vertices = [
+      [0,0,0],
+      lattice[0],
+      lattice[1],
+      lattice[2],
+      lattice[0].map((v,i)=>v+lattice[1][i]),
+      lattice[0].map((v,i)=>v+lattice[2][i]),
+      lattice[1].map((v,i)=>v+lattice[2][i]),
+      lattice[0].map((v,i)=>v+lattice[1][i]+lattice[2][i])
     ];
+
+    const points = vertices.map(v=>new THREE.Vector3(...v));
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const material = new THREE.LineBasicMaterial({ color: 0x777777 });
+    const material = new THREE.LineBasicMaterial({ color:0x777777 });
     this.scene.add(new THREE.Line(geometry, material));
   }
 
