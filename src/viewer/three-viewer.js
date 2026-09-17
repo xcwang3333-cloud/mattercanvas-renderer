@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { detectBonds } from '../core/bond-detector.js';
 import { autoFitCamera } from './camera-utils.js';
+import { attachOrbitControls } from './orbit-controls.js';
 
 const ELEMENTS = {
   H: { color: 0xffffff, radius: 0.31 },
@@ -32,6 +33,8 @@ export class StructureViewer {
 
     this.structureGroup = new THREE.Group();
     this.scene.add(this.structureGroup);
+
+    this.controls = attachOrbitControls(this.camera, this.renderer);
 
     this.scene.add(new THREE.AmbientLight(0xffffff, 0.5));
     const light = new THREE.DirectionalLight(0xffffff, 2);
@@ -77,9 +80,37 @@ export class StructureViewer {
 
   addLattice(lattice) {
     if (!lattice) return;
+
+    const a = new THREE.Vector3(...lattice[0]);
+    const b = new THREE.Vector3(...lattice[1]);
+    const c = new THREE.Vector3(...lattice[2]);
+    const points = [
+      [0,0,0], a, b, c,
+      a.clone().add(b),
+      a.clone().add(c),
+      b.clone().add(c),
+      a.clone().add(b).add(c)
+    ];
+
+    const edges = [
+      [0,1],[0,2],[0,3],[1,4],[1,5],
+      [2,4],[2,6],[3,5],[3,6],
+      [4,7],[5,7],[6,7]
+    ];
+
+    const vertices = [];
+    edges.forEach(([i,j]) => {
+      vertices.push(...points[i].toArray(), ...points[j].toArray());
+    });
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    const material = new THREE.LineBasicMaterial({ color: 0x777777, transparent:true, opacity:0.45 });
+    this.structureGroup.add(new THREE.LineSegments(geometry, material));
   }
 
   render() {
+    this.controls.update();
     this.renderer.render(this.scene, this.camera);
   }
 }
