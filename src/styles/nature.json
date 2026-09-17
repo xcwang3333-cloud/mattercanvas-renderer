@@ -1,0 +1,12 @@
+{
+  "name": "Nature",
+  "atomScale": 0.34,
+  "bondRadius": 0.045,
+  "cellOpacity": 0.18,
+  "background": "#ffffff",
+  "orthographic": true,
+  "lighting": {
+    "ambient": 0.65,
+    "directional": 1.8
+  }
+}
