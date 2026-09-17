@@ -1,0 +1,7 @@
+{
+  "name": "publication-iso",
+  "position": [1.6, 1.2, 1.8],
+  "target": [0, 0, 0],
+  "projection": "orthographic",
+  "zoom": 1.0
+}
