@@ -9,7 +9,7 @@ import { latticeVertices, renderSvgCell } from './svg-cell-renderer.js';
 import { getAtomRenderStyle } from '../renderers/svg-active-site-style.js';
 import { buildActiveSiteState } from '../renderers/active-site-highlight.js';
 import { buildCoordinationAnnotations } from '../renderers/coordination-annotation.js';
-import { renderSvgCoordination } from './svg-coordination-renderer.js';
+import { renderSvgCoordinationAnnotations } from './svg-coordination-renderer.js';
 
 function hexColor(value) {
   if (typeof value === 'string') return value;
@@ -51,9 +51,9 @@ export function renderStructureSVG(structure, options = {}) {
     : '';
 
   const coordinationSvg = options.coordination
-    ? renderSvgCoordination(
+    ? renderSvgCoordinationAnnotations(
         buildCoordinationAnnotations(structure, options.coordination),
-        structure,
+        structure.atoms,
         projector,
         style
       )
