@@ -1,0 +1,20 @@
+name: Release Candidate QA
+
+on:
+  push:
+    branches:
+      - main
+      - feature/v0.4-7-publication-tuning
+  pull_request:
+
+jobs:
+  validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          if [ -f package.json ]; then npm install; fi
+      - name: Run validation tests
+        run: |
+          if [ -f package.json ]; then npm test; fi
