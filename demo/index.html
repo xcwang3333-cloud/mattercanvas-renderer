@@ -5,30 +5,52 @@
 <title>MatterCanvas Renderer Demo</title>
 <style>
 body{margin:0;font-family:Arial;background:#f5f5f5}
-#toolbar{padding:10px;background:white}
-#viewer{width:100vw;height:calc(100vh - 50px)}
+#toolbar{padding:10px;background:white;display:flex;gap:8px;align-items:center}
+#viewer{width:100vw;height:calc(100vh - 55px)}
+#drop{padding:8px;border:1px dashed #999;background:#fafafa}
 </style>
 </head>
 <body>
 <div id="toolbar">
 <input id="file" type="file" accept="POSCAR,.vasp,.cif">
 <button id="load">Load Structure</button>
+<button id="export">Export PNG</button>
+<div id="drop">Drag POSCAR here</div>
 </div>
 <div id="viewer"></div>
+
 <script type="module">
 import { parsePOSCAR } from '../src/parser/poscar-parser.js';
 import { StructureViewer } from '../src/viewer/three-viewer.js';
+import { exportPNG } from '../src/export/image-export.js';
 
 const viewer = new StructureViewer(document.getElementById('viewer'));
-let structure;
+let currentStructure = null;
+
+async function loadText(text){
+  currentStructure = parsePOSCAR(text);
+  viewer.loadStructure(currentStructure);
+  viewer.render();
+}
+
+async function loadFile(file){
+  if(file) await loadText(await file.text());
+}
 
 document.getElementById('load').onclick = async()=>{
  const file=document.getElementById('file').files[0];
- if(!file) return;
- const text=await file.text();
- structure=parsePOSCAR(text);
- viewer.loadStructure(structure);
- viewer.render();
+ await loadFile(file);
+};
+
+document.getElementById('export').onclick = ()=>{
+ exportPNG(viewer.renderer,'mattercanvas-structure.png');
+};
+
+const drop=document.getElementById('drop');
+drop.ondragover=e=>e.preventDefault();
+drop.ondrop=async e=>{
+ e.preventDefault();
+ await loadFile(e.dataTransfer.files[0]);
 };
 </script>
 </body>
