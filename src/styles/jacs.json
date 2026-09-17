@@ -1,0 +1,12 @@
+{
+  "name": "JACS",
+  "atomScale": 0.42,
+  "bondRadius": 0.06,
+  "cellOpacity": 0.25,
+  "background": "#ffffff",
+  "orthographic": true,
+  "lighting": {
+    "ambient": 0.75,
+    "directional": 2.0
+  }
+}
