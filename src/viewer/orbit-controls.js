@@ -1,14 +1,16 @@
 // MatterCanvas Renderer v0.1
-// Simple camera interaction controller
+// Three.js OrbitControls adapter
 
-export class OrbitControlsLite {
-  constructor(camera, domElement) {
-    this.camera = camera;
-    this.domElement = domElement;
-    this.enabled = true;
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-    domElement.addEventListener('wheel', (event)=>{
-      this.camera.position.z += event.deltaY * 0.01;
-    });
-  }
+export function attachOrbitControls(camera, renderer) {
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.enablePan = true;
+  controls.minDistance = 2;
+  controls.maxDistance = 200;
+  controls.target.set(0, 0, 0);
+  controls.update();
+  return controls;
 }
