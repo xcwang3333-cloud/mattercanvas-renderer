@@ -1,0 +1,13 @@
+{
+  "name": "PbN4_CO2RR",
+  "panels": [
+    "PbN4",
+    "PbN4-COOH",
+    "PbN4-OCHO",
+    "PbN4-CO"
+  ],
+  "template": "jacs",
+  "highlight": {
+    "centerElements": ["Pb"]
+  }
+}
