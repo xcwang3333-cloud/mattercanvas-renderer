@@ -5,53 +5,56 @@
 <title>MatterCanvas Renderer Demo</title>
 <style>
 body{margin:0;font-family:Arial;background:#f5f5f5}
-#toolbar{padding:10px;background:white;display:flex;gap:8px;align-items:center}
-#viewer{width:100vw;height:calc(100vh - 55px)}
+#toolbar{padding:10px;background:white;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#viewer{width:100vw;height:calc(100vh - 70px)}
 #drop{padding:8px;border:1px dashed #999;background:#fafafa}
+select,button{padding:5px}
 </style>
 </head>
 <body>
 <div id="toolbar">
 <input id="file" type="file" accept="POSCAR,.vasp,.cif">
-<button id="load">Load Structure</button>
+<button id="load">Load</button>
+<select id="style">
+<option value="nature">Nature</option>
+<option value="jacs">JACS</option>
+<option value="minimal">Minimal</option>
+</select>
+<select id="camera">
+<option value="publication-iso">Publication ISO</option>
+<option value="top">Top</option>
+</select>
+<button id="apply">Apply</button>
 <button id="export">Export PNG</button>
 <div id="drop">Drag POSCAR here</div>
 </div>
 <div id="viewer"></div>
-
 <script type="module">
 import { parsePOSCAR } from '../src/parser/poscar-parser.js';
 import { StructureViewer } from '../src/viewer/three-viewer.js';
 import { exportPNG } from '../src/export/image-export.js';
+import { applyStyle } from '../src/renderer/style-renderer.js';
 
 const viewer = new StructureViewer(document.getElementById('viewer'));
-let currentStructure = null;
+let currentStructure=null;
 
 async function loadText(text){
-  currentStructure = parsePOSCAR(text);
-  viewer.loadStructure(currentStructure);
-  viewer.render();
+ currentStructure=parsePOSCAR(text);
+ viewer.loadStructure(currentStructure);
+ viewer.render();
 }
+async function loadFile(file){if(file) await loadText(await file.text());}
 
-async function loadFile(file){
-  if(file) await loadText(await file.text());
-}
-
-document.getElementById('load').onclick = async()=>{
- const file=document.getElementById('file').files[0];
- await loadFile(file);
+document.getElementById('load').onclick=()=>loadFile(document.getElementById('file').files[0]);
+document.getElementById('apply').onclick=()=>{
+ applyStyle(viewer,document.getElementById('style').value);
+ if(viewer.applyCameraTemplate) viewer.applyCameraTemplate(document.getElementById('camera').value);
 };
-
-document.getElementById('export').onclick = ()=>{
- exportPNG(viewer.renderer,'mattercanvas-structure.png');
-};
+document.getElementById('export').onclick=()=>exportPNG(viewer.renderer,'mattercanvas-publication.png');
 
 const drop=document.getElementById('drop');
 drop.ondragover=e=>e.preventDefault();
-drop.ondrop=async e=>{
- e.preventDefault();
- await loadFile(e.dataTransfer.files[0]);
-};
+drop.ondrop=e=>{e.preventDefault();loadFile(e.dataTransfer.files[0]);};
 </script>
 </body>
 </html>
