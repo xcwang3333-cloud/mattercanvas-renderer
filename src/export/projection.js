@@ -1,5 +1,7 @@
-// MatterCanvas Renderer v0.4
-// Orthographic 3D -> 2D projection utilities for reproducible publication figures.
+// MatterCanvas Renderer v0.4-7
+// Orthographic 3D -> 2D projection with slab-aware fitting.
+
+import { detectSlab } from '../analysis/slab-detector.js';
 
 function sub(a, b) {
   return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -35,32 +37,15 @@ function bounds(points) {
 function cameraBasis(camera = {}) {
   const azimuth = (camera.azimuth ?? 45) * Math.PI / 180;
   const elevation = (camera.elevation ?? 35.264) * Math.PI / 180;
-
   const forward = normalize([
     Math.cos(elevation) * Math.cos(azimuth),
     Math.cos(elevation) * Math.sin(azimuth),
     Math.sin(elevation)
   ]);
-
   const worldUp = Math.abs(forward[2]) > 0.98 ? [0, 1, 0] : [0, 0, 1];
   const right = normalize(cross(forward, worldUp));
   const up = normalize(cross(right, forward));
   return { right, up, forward };
-}
-
-export function projectPoint(point, camera = {}) {
-  const target = camera.target || [0, 0, 0];
-  const delta = sub(point, target);
-  const basis = cameraBasis(camera);
-  const scale = camera.scale || 80;
-  const offsetX = camera.offsetX || 0;
-  const offsetY = camera.offsetY || 0;
-
-  return {
-    x: dot(delta, basis.right) * scale + offsetX,
-    y: -dot(delta, basis.up) * scale + offsetY,
-    z: dot(delta, basis.forward)
-  };
 }
 
 export function createOrthographicProjector(points3d, options = {}) {
@@ -69,6 +54,10 @@ export function createOrthographicProjector(points3d, options = {}) {
   const padding = options.padding ?? 34;
   const target = options.target || [0, 0, 0];
   const basis = cameraBasis(options);
+
+  const slabInfo = options.structure && options.slabAware !== false
+    ? detectSlab(options.structure)
+    : { isSlab: false };
 
   const projected = points3d.map(point => {
     const delta = sub(point, target);
@@ -80,7 +69,13 @@ export function createOrthographicProjector(points3d, options = {}) {
   const spanY = Math.max(box.max[1] - box.min[1], 1e-6);
   const usableWidth = Math.max(1, width - 2 * padding);
   const usableHeight = Math.max(1, height - 2 * padding);
-  const scale = Math.min(usableWidth / spanX, usableHeight / spanY) * (options.zoom ?? 0.92);
+
+  let zoom = options.zoom ?? 0.92;
+  if (slabInfo.isSlab) {
+    zoom *= 1.12;
+  }
+
+  const scale = Math.min(usableWidth / spanX, usableHeight / spanY) * zoom;
   const centerX = (box.min[0] + box.max[0]) / 2;
   const centerY = (box.min[1] + box.max[1]) / 2;
 
@@ -93,8 +88,22 @@ export function createOrthographicProjector(points3d, options = {}) {
       x: width / 2 + (x - centerX) * scale,
       y: height / 2 + (y - centerY) * scale,
       z: depth,
-      scale
+      scale,
+      slabAware: slabInfo.isSlab
     };
+  };
+}
+
+export function projectPoint(point, camera = {}) {
+  const target = camera.target || [0, 0, 0];
+  const delta = sub(point, target);
+  const basis = cameraBasis(camera);
+  const scale = camera.scale || 80;
+
+  return {
+    x: dot(delta, basis.right) * scale + (camera.offsetX || 0),
+    y: -dot(delta, basis.up) * scale + (camera.offsetY || 0),
+    z: dot(delta, basis.forward)
   };
 }
 
